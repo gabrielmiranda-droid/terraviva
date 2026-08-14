@@ -209,3 +209,25 @@ export type ErpProductSummary = {
   produtos_com_estoque_negativo: number;
   valor_total_estoque_venda: string;
 };
+
+export type FiscalInvoiceStatus = "NOT_REQUESTED" | "PENDING" | "ISSUED" | "CANCELLED" | "ERROR";
+
+export type Sale = {
+  id: string;
+  number: string;
+  customer_id?: string | null;
+  seller_id?: string | null;
+  status: string;
+  sold_at?: string | null;
+  items_total: string;
+  discount: string;
+  total: string;
+  fiscal_invoice_requested: boolean;
+  fiscal_invoice_status: FiscalInvoiceStatus;
+  fiscal_document?: string | null;
+  fiscal_name?: string | null;
+  fiscal_state_registration?: string | null;
+  fiscal_email?: string | null;
+  created_at: string;
+  updated_at: string;
+};

@@ -72,6 +72,14 @@ class SaleStatus(StrEnum):
     CANCELADA = "CANCELADA"
 
 
+class FiscalInvoiceStatus(StrEnum):
+    NOT_REQUESTED = "NOT_REQUESTED"
+    PENDING = "PENDING"
+    ISSUED = "ISSUED"
+    CANCELLED = "CANCELLED"
+    ERROR = "ERROR"
+
+
 class PaymentStatus(StrEnum):
     PENDENTE = "PENDENTE"
     PAGO = "PAGO"

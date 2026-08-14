@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.enums import SaleStatus
+from app.core.enums import FiscalInvoiceStatus, SaleStatus
 from app.db.base import Base
 from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 
@@ -27,6 +27,17 @@ class Sale(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     items_total: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     discount: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     total: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
+    fiscal_invoice_requested: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    fiscal_invoice_status: Mapped[str] = mapped_column(
+        String(30),
+        default=FiscalInvoiceStatus.NOT_REQUESTED.value,
+        index=True,
+        nullable=False,
+    )
+    fiscal_document: Mapped[str | None] = mapped_column(String(32))
+    fiscal_name: Mapped[str | None] = mapped_column(String(180))
+    fiscal_state_registration: Mapped[str | None] = mapped_column(String(40))
+    fiscal_email: Mapped[str | None] = mapped_column(String(255))
 
     customer: Mapped["Customer | None"] = relationship(back_populates="sales")
     items: Mapped[list["SaleItem"]] = relationship(back_populates="sale", cascade="all, delete-orphan")

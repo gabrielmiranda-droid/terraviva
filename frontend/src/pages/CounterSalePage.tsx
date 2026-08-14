@@ -5,13 +5,19 @@ import { useQuery } from "@tanstack/react-query";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { api } from "../services/api";
-import type { ErpProduct } from "../types/domain";
+import type { Customer, ErpProduct } from "../types/domain";
 
 type CartItem = ErpProduct & { quantity: number };
 
 async function fetchProducts(search: string) {
   if (!search.trim()) return [];
   const { data } = await api.get<ErpProduct[]>("/erp-products", { params: { search, limit: 30 } });
+  return data;
+}
+
+async function fetchCustomers(search: string) {
+  if (!search.trim()) return [];
+  const { data } = await api.get<Customer[]>("/customers", { params: { search, limit: 10 } });
   return data;
 }
 
@@ -22,10 +28,23 @@ function money(value?: string | number | null) {
 export function CounterSalePage() {
   const [search, setSearch] = useState("");
   const [submittedSearch, setSubmittedSearch] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [fiscalInvoiceRequested, setFiscalInvoiceRequested] = useState(false);
+  const [fiscalData, setFiscalData] = useState({
+    fiscal_document: "",
+    fiscal_name: "",
+    fiscal_state_registration: "",
+    fiscal_email: "",
+  });
   const { data: products = [] } = useQuery({
     queryKey: ["counter-sale-products", submittedSearch],
     queryFn: () => fetchProducts(submittedSearch),
+  });
+  const { data: customers = [] } = useQuery({
+    queryKey: ["counter-sale-customers", customerSearch],
+    queryFn: () => fetchCustomers(customerSearch),
   });
   const total = useMemo(
     () => cart.reduce((sum, item) => sum + Number(item.preco_venda ?? 0) * item.quantity, 0),
@@ -55,6 +74,17 @@ export function CounterSalePage() {
         .map((item) => (item.produto_id === productId ? { ...item, quantity: item.quantity - 1 } : item))
         .filter((item) => item.quantity > 0),
     );
+  }
+
+  function selectCustomer(customer: Customer) {
+    setSelectedCustomer(customer);
+    setCustomerSearch(customer.name);
+    setFiscalData({
+      fiscal_document: customer.document ?? "",
+      fiscal_name: customer.trade_name || customer.name,
+      fiscal_state_registration: customer.state_registration ?? "",
+      fiscal_email: customer.email ?? "",
+    });
   }
 
   return (
@@ -114,6 +144,36 @@ export function CounterSalePage() {
             <ShoppingCart className="text-field-800" size={22} aria-hidden="true" />
           </div>
 
+          <div className="mt-4 border-t border-stone-200 pt-4">
+            <label className="block space-y-1">
+              <span className="label">Cliente</span>
+              <input
+                className="form-field"
+                placeholder="Consumidor final ou buscar cliente"
+                value={customerSearch}
+                onChange={(event) => {
+                  setCustomerSearch(event.target.value);
+                  setSelectedCustomer(null);
+                }}
+              />
+            </label>
+            {customerSearch && !selectedCustomer && customers.length > 0 ? (
+              <div className="mt-2 max-h-44 overflow-auto rounded-md border border-stone-200 bg-white">
+                {customers.map((customer) => (
+                  <button
+                    key={customer.id}
+                    className="block w-full px-3 py-2 text-left text-sm hover:bg-stone-50"
+                    type="button"
+                    onClick={() => selectCustomer(customer)}
+                  >
+                    <span className="font-semibold text-stone-950">{customer.name}</span>
+                    <span className="block text-xs text-stone-500">{customer.document || customer.email || "Sem dados fiscais"}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
           <div className="mt-4 space-y-3">
             {cart.map((item) => (
               <div key={item.produto_id} className="rounded-md border border-stone-200 p-3">
@@ -146,6 +206,56 @@ export function CounterSalePage() {
               <span className="text-sm font-semibold text-stone-600">Total</span>
               <strong className="text-2xl text-stone-950">{money(total)}</strong>
             </div>
+            <label className="mt-4 flex items-start gap-2 text-sm font-semibold text-stone-800">
+              <input
+                className="mt-1 h-4 w-4 rounded border-stone-300 text-field-800"
+                type="checkbox"
+                checked={fiscalInvoiceRequested}
+                onChange={(event) => setFiscalInvoiceRequested(event.target.checked)}
+              />
+              Cliente solicitou Nota Fiscal
+            </label>
+            {fiscalInvoiceRequested ? (
+              <div className="mt-3 space-y-3 rounded-md border border-stone-200 bg-stone-50 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-stone-950">Dados para nota</h3>
+                  <span className="rounded-md bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">NF Pendente</span>
+                </div>
+                <label className="block space-y-1">
+                  <span className="label">CPF/CNPJ</span>
+                  <input
+                    className="form-field"
+                    value={fiscalData.fiscal_document}
+                    onChange={(event) => setFiscalData({ ...fiscalData, fiscal_document: event.target.value })}
+                  />
+                </label>
+                <label className="block space-y-1">
+                  <span className="label">Razao social / nome</span>
+                  <input
+                    className="form-field"
+                    value={fiscalData.fiscal_name}
+                    onChange={(event) => setFiscalData({ ...fiscalData, fiscal_name: event.target.value })}
+                  />
+                </label>
+                <label className="block space-y-1">
+                  <span className="label">Inscricao estadual</span>
+                  <input
+                    className="form-field"
+                    value={fiscalData.fiscal_state_registration}
+                    onChange={(event) => setFiscalData({ ...fiscalData, fiscal_state_registration: event.target.value })}
+                  />
+                </label>
+                <label className="block space-y-1">
+                  <span className="label">E-mail</span>
+                  <input
+                    className="form-field"
+                    type="email"
+                    value={fiscalData.fiscal_email}
+                    onChange={(event) => setFiscalData({ ...fiscalData, fiscal_email: event.target.value })}
+                  />
+                </label>
+              </div>
+            ) : null}
             <button className="btn-primary mt-4 w-full" type="button" disabled>
               Finalizar venda
             </button>

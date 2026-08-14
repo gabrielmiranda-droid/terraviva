@@ -13,3 +13,10 @@ def test_health_check() -> None:
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_health_check_with_vercel_backend_prefix() -> None:
+    client = TestClient(app)
+    response = client.get("/_/backend/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}

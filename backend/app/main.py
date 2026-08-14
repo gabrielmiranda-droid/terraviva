@@ -8,6 +8,19 @@ from app.core.config import settings
 from app.db.seed import seed_initial_data
 
 
+class StripBackendPrefixMiddleware:
+    def __init__(self, app, prefix: str) -> None:
+        self.app = app
+        self.prefix = prefix.rstrip("/")
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and scope.get("path", "").startswith(f"{self.prefix}/"):
+            scope = dict(scope)
+            scope["root_path"] = f"{scope.get('root_path', '')}{self.prefix}"
+            scope["path"] = scope["path"][len(self.prefix) :] or "/"
+        await self.app(scope, receive, send)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if settings.AUTO_SEED:
@@ -29,6 +42,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(StripBackendPrefixMiddleware, prefix="/_/backend")
 
 
 @app.get("/health", tags=["system"])

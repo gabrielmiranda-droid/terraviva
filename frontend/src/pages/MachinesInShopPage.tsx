@@ -1,11 +1,13 @@
-import { CheckCircle2, Search, Tractor } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { CheckCircle2, Tractor } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
+import { SearchField } from "../components/SearchField";
 import { StatusBadge } from "../components/StatusBadge";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { api } from "../services/api";
 import type { WorkshopMachine } from "../types/domain";
 import { getErrorMessage } from "../utils/errors";
@@ -39,19 +41,14 @@ async function fetchMachinesInShop(search: string, status: string, attendanceTyp
 export function MachinesInShopPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [submittedSearch, setSubmittedSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const [status, setStatus] = useState("");
   const [attendanceType, setAttendanceType] = useState("");
   const [error, setError] = useState<string | null>(null);
   const { data: machines = [], isLoading } = useQuery({
-    queryKey: ["machines-in-shop", submittedSearch, status, attendanceType],
-    queryFn: () => fetchMachinesInShop(submittedSearch, status, attendanceType),
+    queryKey: ["machines-in-shop", debouncedSearch, status, attendanceType],
+    queryFn: () => fetchMachinesInShop(debouncedSearch, status, attendanceType),
   });
-
-  function handleSearch(event: FormEvent) {
-    event.preventDefault();
-    setSubmittedSearch(search);
-  }
 
   async function markDelivered(entryId: string) {
     setError(null);
@@ -78,16 +75,13 @@ export function MachinesInShopPage() {
 
       {error ? <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div> : null}
 
-      <form className="surface grid gap-3 p-4 md:grid-cols-[1fr_220px_220px_auto]" onSubmit={handleSearch}>
-        <label className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={17} />
-          <input
-            className="form-field pl-9"
-            placeholder="Buscar por cliente, OS, entrada, série ou máquina"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </label>
+      <section className="surface grid gap-3 p-4 md:grid-cols-[1fr_220px_220px]">
+        <SearchField
+          value={search}
+          onChange={setSearch}
+          placeholder="Buscar por cliente, OS, entrada, serie ou maquina"
+          ariaLabel="Buscar maquinas na oficina"
+        />
         <select className="form-field" value={status} onChange={(event) => setStatus(event.target.value)}>
           {statusOptions.map((option) => (
             <option key={option || "TODAS"} value={option}>
@@ -100,11 +94,7 @@ export function MachinesInShopPage() {
           <option value="SERVICO_DIRETO">Executar serviço</option>
           <option value="ORCAMENTO">Fazer orçamento</option>
         </select>
-        <button className="btn-secondary" type="submit">
-          <Search size={17} aria-hidden="true" />
-          Buscar
-        </button>
-      </form>
+      </section>
 
       <div className="surface overflow-hidden">
         <div className="overflow-x-auto">

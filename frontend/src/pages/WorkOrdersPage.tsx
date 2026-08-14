@@ -1,10 +1,11 @@
-import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import { PageHeader } from "../components/PageHeader";
+import { SearchField } from "../components/SearchField";
 import { StatusBadge } from "../components/StatusBadge";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { api } from "../services/api";
 import type { Customer, Machine, WorkOrder } from "../types/domain";
 import { getStatusMeta } from "../utils/status";
@@ -25,8 +26,10 @@ const statusOptions = [
   "CANCELADA",
 ];
 
-async function fetchWorkOrders(status: string) {
-  const { data } = await api.get<WorkOrder[]>("/work-orders", { params: { status: status || undefined } });
+async function fetchWorkOrders(status: string, search: string) {
+  const { data } = await api.get<WorkOrder[]>("/work-orders", {
+    params: { status: status || undefined, search: search || undefined, limit: 200 },
+  });
   return data;
 }
 
@@ -42,9 +45,11 @@ async function fetchMachines() {
 
 export function WorkOrdersPage() {
   const [status, setStatus] = useState("");
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const { data: workOrders = [], isLoading } = useQuery({
-    queryKey: ["work-orders", status],
-    queryFn: () => fetchWorkOrders(status),
+    queryKey: ["work-orders", status, debouncedSearch],
+    queryFn: () => fetchWorkOrders(status, debouncedSearch),
   });
   const { data: customers = [] } = useQuery({ queryKey: ["customers"], queryFn: fetchCustomers });
   const { data: machines = [] } = useQuery({ queryKey: ["machines"], queryFn: fetchMachines });
@@ -55,19 +60,24 @@ export function WorkOrdersPage() {
     <div className="space-y-5">
       <PageHeader title="Ordens de Servico" />
 
-      <label className="flex max-w-sm flex-col gap-1">
-        <span className="label">Status</span>
-        <span className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={17} />
-          <select className="form-field pl-9" value={status} onChange={(event) => setStatus(event.target.value)}>
+      <section className="surface grid gap-3 p-4 md:grid-cols-[1fr_260px]">
+        <SearchField
+          value={search}
+          onChange={setSearch}
+          placeholder="Buscar por OS, cliente, documento, maquina ou problema"
+          ariaLabel="Buscar ordens de servico"
+        />
+        <label className="flex flex-col gap-1">
+          <span className="label">Status</span>
+          <select className="form-field" value={status} onChange={(event) => setStatus(event.target.value)}>
             {statusOptions.map((option) => (
               <option key={option || "TODAS"} value={option}>
                 {option ? getStatusMeta(option).label : "Todas"}
               </option>
             ))}
           </select>
-        </span>
-      </label>
+        </label>
+      </section>
 
       <div className="overflow-hidden rounded-md border border-stone-200 bg-white shadow-sm">
         <div className="overflow-x-auto">

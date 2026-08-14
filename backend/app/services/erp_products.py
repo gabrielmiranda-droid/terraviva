@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import String, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.supabase_erp import (
@@ -69,7 +69,14 @@ def list_erp_products(
     )
     if search:
         like = f"%{search.strip()}%"
-        stmt = stmt.where(or_(ErpProduto.descricao.ilike(like), ErpProduto.sku.ilike(like), ErpMarca.nome.ilike(like)))
+        stmt = stmt.where(
+            or_(
+                ErpProduto.produto_id.cast(String).ilike(like),
+                ErpProduto.descricao.ilike(like),
+                ErpProduto.sku.ilike(like),
+                ErpMarca.nome.ilike(like),
+            )
+        )
 
     return [ErpProductRead.model_validate(row._asdict()) for row in db.execute(stmt).all()]
 

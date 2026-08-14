@@ -18,12 +18,13 @@ router = APIRouter()
 @router.get("", response_model=list[WorkOrderRead])
 def list_(
     status: str | None = Query(default=None),
+    search: str | None = Query(default=None),
     offset: int = 0,
     limit: int = Query(default=100, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return list_work_orders(db, status_filter=status, offset=offset, limit=limit)
+    return list_work_orders(db, status_filter=status, search=search, offset=offset, limit=limit)
 
 
 @router.get("/{work_order_id}", response_model=WorkOrderRead)

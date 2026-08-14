@@ -1,29 +1,27 @@
-import { Plus, Search } from "lucide-react";
-import { FormEvent, useState } from "react";
-import { Link } from "react-router-dom";
+import { Plus } from "lucide-react";
+import { useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import { PageHeader } from "../components/PageHeader";
+import { SearchField } from "../components/SearchField";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { api } from "../services/api";
 import type { Customer } from "../types/domain";
 
 async function fetchCustomers(search: string) {
-  const { data } = await api.get<Customer[]>("/customers", { params: { search: search || undefined } });
+  const { data } = await api.get<Customer[]>("/customers", { params: { search: search || undefined, limit: 200 } });
   return data;
 }
 
 export function CustomersPage() {
-  const [search, setSearch] = useState("");
-  const [submittedSearch, setSubmittedSearch] = useState("");
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(searchParams.get("q") ?? "");
+  const debouncedSearch = useDebouncedValue(search);
   const { data = [], isLoading } = useQuery({
-    queryKey: ["customers", submittedSearch],
-    queryFn: () => fetchCustomers(submittedSearch),
+    queryKey: ["customers", debouncedSearch],
+    queryFn: () => fetchCustomers(debouncedSearch),
   });
-
-  function handleSearch(event: FormEvent) {
-    event.preventDefault();
-    setSubmittedSearch(search);
-  }
 
   return (
     <div className="space-y-5">
@@ -37,21 +35,14 @@ export function CustomersPage() {
         }
       />
 
-      <form className="flex flex-col gap-2 sm:flex-row" onSubmit={handleSearch}>
-        <label className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={17} />
-          <input
-            className="form-field pl-9"
-            placeholder="Buscar por nome, documento, telefone ou email"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </label>
-        <button className="btn-secondary" type="submit">
-          <Search size={17} aria-hidden="true" />
-          Buscar
-        </button>
-      </form>
+      <section className="surface p-3">
+        <SearchField
+          value={search}
+          onChange={setSearch}
+          placeholder="Buscar por nome, documento, telefone ou email"
+          ariaLabel="Buscar clientes"
+        />
+      </section>
 
       <div className="overflow-hidden rounded-md border border-stone-200 bg-white shadow-sm">
         <div className="overflow-x-auto">

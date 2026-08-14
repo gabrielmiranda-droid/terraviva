@@ -14,10 +14,11 @@ def list_work_orders(
     db: Session,
     *,
     status_filter: str | None,
+    search: str | None,
     offset: int,
     limit: int,
 ) -> list[WorkOrder]:
-    return WorkOrderRepository(db).list_by_status(status_filter, offset=offset, limit=limit)
+    return WorkOrderRepository(db).list_by_status(status_filter, search=search, offset=offset, limit=limit)
 
 
 def get_work_order_or_404(db: Session, work_order_id: str) -> WorkOrder:

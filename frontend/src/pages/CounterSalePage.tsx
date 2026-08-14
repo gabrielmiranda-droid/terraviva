@@ -1,9 +1,11 @@
 import { Minus, Plus, Search, ShoppingCart } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
+import { SearchField } from "../components/SearchField";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { api } from "../services/api";
 import type { Customer, ErpProduct } from "../types/domain";
 
@@ -27,8 +29,9 @@ function money(value?: string | number | null) {
 
 export function CounterSalePage() {
   const [search, setSearch] = useState("");
-  const [submittedSearch, setSubmittedSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const [customerSearch, setCustomerSearch] = useState("");
+  const debouncedCustomerSearch = useDebouncedValue(customerSearch);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [fiscalInvoiceRequested, setFiscalInvoiceRequested] = useState(false);
@@ -39,22 +42,17 @@ export function CounterSalePage() {
     fiscal_email: "",
   });
   const { data: products = [] } = useQuery({
-    queryKey: ["counter-sale-products", submittedSearch],
-    queryFn: () => fetchProducts(submittedSearch),
+    queryKey: ["counter-sale-products", debouncedSearch],
+    queryFn: () => fetchProducts(debouncedSearch),
   });
   const { data: customers = [] } = useQuery({
-    queryKey: ["counter-sale-customers", customerSearch],
-    queryFn: () => fetchCustomers(customerSearch),
+    queryKey: ["counter-sale-customers", debouncedCustomerSearch],
+    queryFn: () => fetchCustomers(debouncedCustomerSearch),
   });
   const total = useMemo(
     () => cart.reduce((sum, item) => sum + Number(item.preco_venda ?? 0) * item.quantity, 0),
     [cart],
   );
-
-  function handleSearch(event: FormEvent) {
-    event.preventDefault();
-    setSubmittedSearch(search);
-  }
 
   function addProduct(product: ErpProduct) {
     setCart((current) => {
@@ -93,20 +91,14 @@ export function CounterSalePage() {
 
       <section className="grid gap-5 xl:grid-cols-[1fr_380px]">
         <div className="space-y-4">
-          <form className="surface flex gap-2 p-4" onSubmit={handleSearch}>
-            <label className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={17} />
-              <input
-                className="form-field pl-9"
-                placeholder="Buscar por código, SKU, descrição ou marca"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </label>
-            <button className="btn-secondary" type="submit">
-              Buscar
-            </button>
-          </form>
+          <section className="surface p-4">
+            <SearchField
+              value={search}
+              onChange={setSearch}
+              placeholder="Buscar por codigo, SKU, descricao ou marca"
+              ariaLabel="Buscar produtos da venda"
+            />
+          </section>
 
           <div className="grid gap-3 md:grid-cols-2">
             {products.map((product) => (
@@ -126,7 +118,7 @@ export function CounterSalePage() {
             ))}
           </div>
 
-          {submittedSearch && products.length === 0 ? (
+          {debouncedSearch && products.length === 0 ? (
             <EmptyState
               icon={Search}
               title="Nenhum produto encontrado"

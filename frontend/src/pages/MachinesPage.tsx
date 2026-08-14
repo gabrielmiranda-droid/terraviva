@@ -1,14 +1,16 @@
-import { Plus, Search } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { Plus } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import { PageHeader } from "../components/PageHeader";
+import { SearchField } from "../components/SearchField";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { api } from "../services/api";
 import type { Customer, Machine } from "../types/domain";
 
 async function fetchMachines(search: string) {
-  const { data } = await api.get<Machine[]>("/machines", { params: { search: search || undefined } });
+  const { data } = await api.get<Machine[]>("/machines", { params: { search: search || undefined, limit: 200 } });
   return data;
 }
 
@@ -19,18 +21,13 @@ async function fetchCustomers() {
 
 export function MachinesPage() {
   const [search, setSearch] = useState("");
-  const [submittedSearch, setSubmittedSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const { data: machines = [], isLoading } = useQuery({
-    queryKey: ["machines", submittedSearch],
-    queryFn: () => fetchMachines(submittedSearch),
+    queryKey: ["machines", debouncedSearch],
+    queryFn: () => fetchMachines(debouncedSearch),
   });
   const { data: customers = [] } = useQuery({ queryKey: ["customers"], queryFn: fetchCustomers });
   const customerById = useMemo(() => new Map(customers.map((customer) => [customer.id, customer])), [customers]);
-
-  function handleSearch(event: FormEvent) {
-    event.preventDefault();
-    setSubmittedSearch(search);
-  }
 
   return (
     <div className="space-y-5">
@@ -44,21 +41,14 @@ export function MachinesPage() {
         }
       />
 
-      <form className="flex flex-col gap-2 sm:flex-row" onSubmit={handleSearch}>
-        <label className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={17} />
-          <input
-            className="form-field pl-9"
-            placeholder="Buscar por tipo, marca, modelo, serie ou identificacao"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </label>
-        <button className="btn-secondary" type="submit">
-          <Search size={17} aria-hidden="true" />
-          Buscar
-        </button>
-      </form>
+      <section className="surface p-3">
+        <SearchField
+          value={search}
+          onChange={setSearch}
+          placeholder="Buscar por cliente, tipo, marca, modelo, serie ou identificacao"
+          ariaLabel="Buscar maquinas"
+        />
+      </section>
 
       <div className="overflow-hidden rounded-md border border-stone-200 bg-white shadow-sm">
         <div className="overflow-x-auto">

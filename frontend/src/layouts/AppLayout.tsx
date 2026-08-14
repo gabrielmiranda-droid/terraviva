@@ -20,8 +20,8 @@ import {
   Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { FormEvent, useState } from "react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../hooks/useAuth";
 
@@ -114,7 +114,15 @@ function SidebarItem({ item, collapsed }: { item: NavItem; collapsed: boolean })
 export function AppLayout() {
   const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const navigate = useNavigate();
   const mobileLinks = sections.flatMap((section) => section.items.filter((item) => item.to));
+
+  function submitCustomerSearch(event: FormEvent) {
+    event.preventDefault();
+    const query = customerSearch.trim();
+    navigate(query ? `/clientes?q=${encodeURIComponent(query)}` : "/clientes");
+  }
 
   return (
     <div className="min-h-screen bg-[#f3f5f1] text-stone-900">
@@ -183,14 +191,15 @@ export function AppLayout() {
               <PanelLeftClose size={17} aria-hidden="true" />
             </button>
 
-            <label className="relative hidden min-w-0 flex-1 md:block">
+            <form className="relative hidden min-w-0 flex-1 md:block" onSubmit={submitCustomerSearch}>
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={17} />
               <input
                 className="form-field bg-stone-50 pl-9"
-                placeholder="Busca global: cliente, máquina, OS, produto..."
-                readOnly
+                placeholder="Buscar cliente por nome, documento ou telefone"
+                value={customerSearch}
+                onChange={(event) => setCustomerSearch(event.target.value)}
               />
-            </label>
+            </form>
 
             <NavLink className="btn-primary ml-auto" to="/entrada">
               <Plus size={17} aria-hidden="true" />

@@ -1,0 +1,14 @@
+[project]
+name = "erp-oficina-agricola-backend"
+version = "0.1.0"
+description = "Backend FastAPI para ERP de oficina agricola"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

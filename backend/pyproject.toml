@@ -3,7 +3,22 @@ name = "erp-oficina-agricola-backend"
 version = "0.1.0"
 description = "Backend FastAPI para ERP de oficina agricola"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+  "fastapi>=0.115.0,<1.0.0",
+  "uvicorn[standard]>=0.30.0,<1.0.0",
+  "SQLAlchemy>=2.0.30,<3.0.0",
+  "alembic>=1.13.0,<2.0.0",
+  "psycopg[binary]>=3.2.0,<4.0.0",
+  "pydantic-settings>=2.4.0,<3.0.0",
+  "python-jose[cryptography]>=3.3.0,<4.0.0",
+  "passlib[bcrypt]>=1.7.4,<2.0.0",
+  "bcrypt>=4.0.1,<4.1.0",
+  "python-multipart>=0.0.9,<1.0.0",
+  "email-validator>=2.2.0,<3.0.0",
+  "openpyxl>=3.1.5,<4.0.0",
+  "pandas>=2.2.0,<3.0.0",
+  "pyodbc>=5.2.0,<6.0.0",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

@@ -27,7 +27,7 @@ export function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<LoginForm>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "admin@geleia.local", password: "admin123" },
+    defaultValues: { email: "admin@geleia.local", password: "123456" },
   });
 
   if (isAuthenticated) {

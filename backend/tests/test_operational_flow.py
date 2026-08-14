@@ -118,3 +118,103 @@ def test_customer_machine_entry_creates_work_order() -> None:
     in_shop_after_delivery = client.get("/api/v1/machine-entries/in-shop", headers=headers)
     assert in_shop_after_delivery.status_code == 200
     assert in_shop_after_delivery.json() == []
+
+
+def test_budget_flow_keeps_stock_until_real_consumption() -> None:
+    app.dependency_overrides[get_db] = override_get_db
+    client = TestClient(app)
+
+    login = client.post("/api/v1/auth/login", json={"email": "admin@geleia.local", "password": "admin123"})
+    assert login.status_code == 200
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    customer = client.post("/api/v1/customers", json={"name": "Cliente Orcamento"}, headers=headers)
+    assert customer.status_code == 201
+    machine = client.post(
+        "/api/v1/machines",
+        json={"customer_id": customer.json()["id"], "type": "Roçadeira", "brand": "Stihl"},
+        headers=headers,
+    )
+    assert machine.status_code == 201
+    entry = client.post(
+        "/api/v1/machine-entries",
+        json={
+            "customer_id": customer.json()["id"],
+            "machine_id": machine.json()["id"],
+            "attendance_type": "ORCAMENTO",
+            "reported_problem": "Falha ao acelerar",
+        },
+        headers=headers,
+    )
+    assert entry.status_code == 201
+    work_order_id = entry.json()["work_order_id"]
+
+    pending = client.get("/api/v1/budgets/pending", headers=headers)
+    assert pending.status_code == 200
+    assert any(item["work_order_id"] == work_order_id for item in pending.json())
+
+    part = client.post(
+        "/api/v1/parts",
+        json={
+            "legacy_code": "43-10-WAT",
+            "description": "JG. Juntas c/ Diafragma Walbro",
+            "manufacturer": "Walbro",
+            "sale_price": "65.00",
+            "current_stock": "3",
+            "location": "P 01 - A - 02",
+        },
+        headers=headers,
+    )
+    assert part.status_code == 201
+    part_id = part.json()["id"]
+
+    budget = client.post(f"/api/v1/budgets/work-orders/{work_order_id}/budget", headers=headers)
+    assert budget.status_code == 201
+    budget_id = budget.json()["id"]
+
+    updated = client.put(
+        f"/api/v1/budgets/{budget_id}",
+        json={
+            "discount": "0",
+            "items": [
+                {
+                    "item_type": "PECA",
+                    "part_id": part_id,
+                    "description": "43-10-WAT - JG. Juntas c/ Diafragma Walbro",
+                    "quantity": "2",
+                    "unit_price": "65.00",
+                    "discount": "0",
+                },
+                {
+                    "item_type": "SERVICO",
+                    "description": "Limpeza de carburador",
+                    "quantity": "1",
+                    "unit_price": "120.00",
+                    "discount": "0",
+                },
+            ],
+        },
+        headers=headers,
+    )
+    assert updated.status_code == 200
+    assert updated.json()["total"] == "250.00"
+
+    part_after_budget = client.get("/api/v1/parts", params={"search": "43-10-WAT"}, headers=headers)
+    assert part_after_budget.status_code == 200
+    assert part_after_budget.json()[0]["stock_available"] == "3.000"
+
+    finalized = client.post(f"/api/v1/budgets/{budget_id}/finalize", headers=headers)
+    assert finalized.status_code == 200
+    assert finalized.json()["status"] == "AGUARDANDO_RESPOSTA"
+    detail_after_finalize = client.get(f"/api/v1/work-orders/{work_order_id}", headers=headers)
+    assert detail_after_finalize.json()["status"] == "AGUARDANDO_APROVACAO"
+
+    approved = client.post(
+        f"/api/v1/budgets/{budget_id}/approve",
+        json={"method": "WhatsApp", "note": "Aprovado pelo cliente."},
+        headers=headers,
+    )
+    assert approved.status_code == 200
+    assert approved.json()["status"] == "APROVADO"
+    detail_after_approval = client.get(f"/api/v1/work-orders/{work_order_id}", headers=headers)
+    assert detail_after_approval.json()["status"] == "APROVADA"

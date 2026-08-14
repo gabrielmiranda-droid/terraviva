@@ -210,6 +210,54 @@ export type ErpProductSummary = {
   valor_total_estoque_venda: string;
 };
 
+export type PartSearch = {
+  id: string;
+  code?: string | null;
+  internal_code?: string | null;
+  barcode?: string | null;
+  description: string;
+  manufacturer?: string | null;
+  stock_available: string;
+  sale_price: string;
+  location?: string | null;
+  unit: string;
+};
+
+export type BudgetItem = {
+  id: string;
+  budget_id: string;
+  item_type: "PECA" | "SERVICO";
+  part_id?: string | null;
+  description: string;
+  quantity: string;
+  unit_price: string;
+  discount: string;
+  total: string;
+};
+
+export type Budget = {
+  id: string;
+  number: string;
+  version: number;
+  work_order_id: string;
+  date?: string | null;
+  valid_until?: string | null;
+  notes?: string | null;
+  parts_subtotal: string;
+  services_subtotal: string;
+  discount: string;
+  total: string;
+  status: string;
+  approval_method?: string | null;
+  approved_at?: string | null;
+  rejected_at?: string | null;
+  rejection_reason?: string | null;
+  responsible_user_id?: string | null;
+  items: BudgetItem[];
+  created_at: string;
+  updated_at: string;
+};
+
 export type FiscalInvoiceStatus = "NOT_REQUESTED" | "PENDING" | "ISSUED" | "CANCELLED" | "ERROR";
 
 export type Sale = {

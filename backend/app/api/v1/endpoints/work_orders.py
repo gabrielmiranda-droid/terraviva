@@ -3,8 +3,10 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
 from app.models.user import User
+from app.schemas.budget import BudgetRead
 from app.schemas.operations import WorkOrderDetailRead, WorkOrderStatusUpdate
 from app.schemas.work_order import WorkOrderRead
+from app.services.budgets import create_or_get_budget, get_active_budget_for_work_order
 from app.services.work_orders import (
     get_work_order_detail_or_404,
     get_work_order_or_404,
@@ -34,6 +36,30 @@ def get(
     current_user: User = Depends(get_current_user),
 ):
     return get_work_order_or_404(db, work_order_id)
+
+
+@router.get("/{work_order_id}/budget", response_model=BudgetRead | None)
+def get_budget(
+    work_order_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return get_active_budget_for_work_order(db, work_order_id)
+
+
+@router.post("/{work_order_id}/budget", response_model=BudgetRead, status_code=201)
+def create_budget(
+    work_order_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return create_or_get_budget(
+        db,
+        work_order_id=work_order_id,
+        user_id=current_user.id,
+        ip_address=request.client.host if request.client else None,
+    )
 
 
 @router.get("/{work_order_id}/detail", response_model=WorkOrderDetailRead)

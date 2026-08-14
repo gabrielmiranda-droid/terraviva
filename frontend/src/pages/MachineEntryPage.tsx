@@ -17,7 +17,9 @@ import { CustomerEntryReceipt, MachineTag } from "../components/PrintDocuments";
 import { EmptyState } from "../components/EmptyState";
 import { Modal } from "../components/Modal";
 import { PageHeader } from "../components/PageHeader";
+import { SearchField } from "../components/SearchField";
 import { Stepper } from "../components/Stepper";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { api } from "../services/api";
 import type { AttendanceType, Customer, Machine, MachineEntryResult } from "../types/domain";
 import { getErrorMessage } from "../utils/errors";
@@ -28,9 +30,18 @@ const accessoryOptions = ["bateria", "carregador", "lâmina", "corrente", "sabre
 
 type CustomerDraft = {
   name: string;
+  trade_name: string;
   document: string;
   phone: string;
   whatsapp: string;
+  email: string;
+  zip_code: string;
+  address: string;
+  number: string;
+  district: string;
+  city: string;
+  state: string;
+  notes: string;
 };
 
 type MachineDraft = {
@@ -58,10 +69,46 @@ function machineLabel(machine: Machine) {
   return [machine.type, machine.brand, machine.model].filter(Boolean).join(" / ");
 }
 
+const emptyCustomerDraft: CustomerDraft = {
+  name: "",
+  trade_name: "",
+  document: "",
+  phone: "",
+  whatsapp: "",
+  email: "",
+  zip_code: "",
+  address: "",
+  number: "",
+  district: "",
+  city: "",
+  state: "",
+  notes: "",
+};
+
+function customerDraftFromSearch(search: string): CustomerDraft {
+  const draft = { ...emptyCustomerDraft };
+  const value = search.trim();
+  if (!value) return draft;
+
+  const digits = value.replace(/\D/g, "");
+  if (value.includes("@")) {
+    draft.email = value;
+  } else if (digits.length >= 11) {
+    draft.document = digits;
+  } else if (digits.length >= 8) {
+    draft.phone = digits;
+    draft.whatsapp = digits;
+  } else {
+    draft.name = value;
+  }
+  return draft;
+}
+
 export function MachineEntryPage() {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
   const [customerSearch, setCustomerSearch] = useState("");
+  const debouncedCustomerSearch = useDebouncedValue(customerSearch);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
   const [reportedProblem, setReportedProblem] = useState("");
@@ -75,7 +122,7 @@ export function MachineEntryPage() {
   const [result, setResult] = useState<MachineEntryResult | null>(null);
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [machineModalOpen, setMachineModalOpen] = useState(false);
-  const [customerDraft, setCustomerDraft] = useState<CustomerDraft>({ name: "", document: "", phone: "", whatsapp: "" });
+  const [customerDraft, setCustomerDraft] = useState<CustomerDraft>(emptyCustomerDraft);
   const [machineDraft, setMachineDraft] = useState<MachineDraft>({
     type: "",
     brand: "",
@@ -86,8 +133,8 @@ export function MachineEntryPage() {
   const [printMode, setPrintMode] = useState<"receipt" | "tag" | null>(null);
 
   const { data: customers = [], isLoading: loadingCustomers } = useQuery({
-    queryKey: ["customers", customerSearch],
-    queryFn: () => fetchCustomers(customerSearch),
+    queryKey: ["customers", debouncedCustomerSearch],
+    queryFn: () => fetchCustomers(debouncedCustomerSearch),
   });
   const { data: machines = [], isLoading: loadingMachines } = useQuery({
     queryKey: ["machines", selectedCustomer?.id],
@@ -104,9 +151,21 @@ export function MachineEntryPage() {
     );
   }
 
+  function openCustomerModal() {
+    setCustomerDraft((current) => {
+      const hasDraft = Object.values(current).some((value) => value.trim());
+      return hasDraft ? current : customerDraftFromSearch(customerSearch);
+    });
+    setCustomerModalOpen(true);
+  }
+
   async function createCustomer(event: FormEvent) {
     event.preventDefault();
     setError(null);
+    if (customerDraft.name.trim().length < 2) {
+      setError("Informe o nome do cliente para continuar a entrada.");
+      return;
+    }
     try {
       const payload = Object.fromEntries(
         Object.entries(customerDraft).map(([key, value]) => [key, value.trim() || null]),
@@ -114,6 +173,7 @@ export function MachineEntryPage() {
       const { data } = await api.post<Customer>("/customers", payload);
       setSelectedCustomer(data);
       setCustomerSearch(data.name);
+      setCustomerDraft(emptyCustomerDraft);
       setCustomerModalOpen(false);
       setStep(1);
       queryClient.invalidateQueries({ queryKey: ["customers"] });
@@ -188,6 +248,14 @@ export function MachineEntryPage() {
     setSelectedAccessories([]);
     setAccessoryNotes("");
     setAttendanceType("SERVICO_DIRETO");
+    setCustomerDraft(emptyCustomerDraft);
+    setMachineDraft({
+      type: "",
+      brand: "",
+      model: "",
+      serial_number: "",
+      identification: "",
+    });
     setResult(null);
     setError(null);
   }
@@ -202,16 +270,12 @@ export function MachineEntryPage() {
 
       <section className={step === 0 ? "space-y-4" : "hidden"}>
         <div className="surface p-4">
-          <label className="relative block">
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={17} />
-            <input
-              className="form-field pl-9"
-              placeholder="Buscar por nome, telefone, WhatsApp, CPF ou CNPJ"
-              value={customerSearch}
-              onChange={(event) => setCustomerSearch(event.target.value)}
-              autoFocus
-            />
-          </label>
+          <SearchField
+            value={customerSearch}
+            onChange={setCustomerSearch}
+            placeholder="Buscar por nome, telefone, WhatsApp, CPF ou CNPJ"
+            ariaLabel="Buscar cliente para entrada"
+          />
         </div>
 
         <div className="grid gap-3 lg:grid-cols-2">
@@ -242,14 +306,14 @@ export function MachineEntryPage() {
             title="Nenhum cliente encontrado"
             description="Cadastre o cliente sem sair do fluxo de entrada."
             action={
-              <button className="btn-primary" type="button" onClick={() => setCustomerModalOpen(true)}>
+              <button className="btn-primary" type="button" onClick={openCustomerModal}>
                 <Plus size={17} aria-hidden="true" />
                 Novo cliente
               </button>
             }
           />
         ) : (
-          <button className="btn-secondary" type="button" onClick={() => setCustomerModalOpen(true)}>
+          <button className="btn-secondary" type="button" onClick={openCustomerModal}>
             <Plus size={17} aria-hidden="true" />
             Novo cliente
           </button>
@@ -448,11 +512,15 @@ export function MachineEntryPage() {
         </div>
       </section>
 
-      <Modal title="Novo cliente" open={customerModalOpen} onClose={() => setCustomerModalOpen(false)}>
+      <Modal title="Novo cliente" open={customerModalOpen} onClose={() => setCustomerModalOpen(false)} size="xl">
         <form className="grid gap-4 md:grid-cols-2" onSubmit={createCustomer}>
           <label className="block space-y-1 md:col-span-2">
             <span className="label">Nome / Razão social</span>
             <input className="form-field" value={customerDraft.name} onChange={(event) => setCustomerDraft({ ...customerDraft, name: event.target.value })} autoFocus />
+          </label>
+          <label className="block space-y-1 md:col-span-2">
+            <span className="label">Nome fantasia</span>
+            <input className="form-field" value={customerDraft.trade_name} onChange={(event) => setCustomerDraft({ ...customerDraft, trade_name: event.target.value })} />
           </label>
           <label className="block space-y-1">
             <span className="label">CPF/CNPJ</span>
@@ -465,6 +533,38 @@ export function MachineEntryPage() {
           <label className="block space-y-1">
             <span className="label">WhatsApp</span>
             <input className="form-field" value={customerDraft.whatsapp} onChange={(event) => setCustomerDraft({ ...customerDraft, whatsapp: event.target.value })} />
+          </label>
+          <label className="block space-y-1">
+            <span className="label">Email</span>
+            <input className="form-field" type="email" value={customerDraft.email} onChange={(event) => setCustomerDraft({ ...customerDraft, email: event.target.value })} />
+          </label>
+          <label className="block space-y-1">
+            <span className="label">CEP</span>
+            <input className="form-field" value={customerDraft.zip_code} onChange={(event) => setCustomerDraft({ ...customerDraft, zip_code: event.target.value })} />
+          </label>
+          <label className="block space-y-1 md:col-span-2">
+            <span className="label">Endereco</span>
+            <input className="form-field" value={customerDraft.address} onChange={(event) => setCustomerDraft({ ...customerDraft, address: event.target.value })} />
+          </label>
+          <label className="block space-y-1">
+            <span className="label">Numero</span>
+            <input className="form-field" value={customerDraft.number} onChange={(event) => setCustomerDraft({ ...customerDraft, number: event.target.value })} />
+          </label>
+          <label className="block space-y-1">
+            <span className="label">Bairro</span>
+            <input className="form-field" value={customerDraft.district} onChange={(event) => setCustomerDraft({ ...customerDraft, district: event.target.value })} />
+          </label>
+          <label className="block space-y-1">
+            <span className="label">Cidade</span>
+            <input className="form-field" value={customerDraft.city} onChange={(event) => setCustomerDraft({ ...customerDraft, city: event.target.value })} />
+          </label>
+          <label className="block space-y-1">
+            <span className="label">UF</span>
+            <input className="form-field uppercase" maxLength={2} value={customerDraft.state} onChange={(event) => setCustomerDraft({ ...customerDraft, state: event.target.value.toUpperCase() })} />
+          </label>
+          <label className="block space-y-1 md:col-span-2">
+            <span className="label">Observacoes</span>
+            <textarea className="form-field min-h-20" value={customerDraft.notes} onChange={(event) => setCustomerDraft({ ...customerDraft, notes: event.target.value })} />
           </label>
           <div className="flex justify-end gap-2 md:col-span-2">
             <button className="btn-secondary" type="button" onClick={() => setCustomerModalOpen(false)}>

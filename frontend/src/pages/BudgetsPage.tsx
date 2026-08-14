@@ -13,10 +13,6 @@ import type { WorkshopMachine } from "../types/domain";
 import { getStatusMeta } from "../utils/status";
 
 const statusOptions = [
-  "",
-  "AGUARDANDO_DIAGNOSTICO",
-  "EM_DIAGNOSTICO",
-  "AGUARDANDO_ORCAMENTO",
   "AGUARDANDO_APROVACAO",
   "APROVADA",
   "RECUSADA",
@@ -31,7 +27,7 @@ async function fetchBudgetQueue(search: string, status: string) {
 
 export function BudgetsPage() {
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState("AGUARDANDO_APROVACAO");
   const debouncedSearch = useDebouncedValue(search);
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["budget-queue", debouncedSearch, status],
@@ -40,7 +36,7 @@ export function BudgetsPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Orcamentos" />
+      <PageHeader title="Orcamentos prontos" />
 
       <section className="surface grid gap-3 p-4 md:grid-cols-[1fr_260px]">
         <SearchField
@@ -52,7 +48,7 @@ export function BudgetsPage() {
         <select className="form-field" value={status} onChange={(event) => setStatus(event.target.value)}>
           {statusOptions.map((option) => (
             <option key={option || "TODOS"} value={option}>
-              {option ? getStatusMeta(option).label : "Todos os status"}
+              {getStatusMeta(option).label}
             </option>
           ))}
         </select>
@@ -104,8 +100,8 @@ export function BudgetsPage() {
                   <td className="p-6" colSpan={7}>
                     <EmptyState
                       icon={FileText}
-                      title="Nenhuma maquina aguardando orcamento"
-                      description="Entradas marcadas como orcamento aparecerao aqui automaticamente."
+                      title="Nenhum orcamento pronto"
+                      description="Orcamentos finalizados e enviados para aprovacao aparecerao aqui."
                     />
                   </td>
                 </tr>

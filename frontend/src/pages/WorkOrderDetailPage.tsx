@@ -28,9 +28,9 @@ import { formatAttendanceType, getStatusMeta } from "../utils/status";
 const tabs = [
   { key: "resumo", label: "Resumo", icon: ClipboardList },
   { key: "diagnostico", label: "Diagnóstico", icon: Wrench },
-  { key: "orcamento", label: "Orçamento", icon: FileText },
-  { key: "servicos", label: "Serviços", icon: Hammer },
-  { key: "pecas", label: "Peças utilizadas", icon: PackagePlus },
+  { key: "pecas", label: "Pecas", icon: PackagePlus },
+  { key: "servicos", label: "Mao de obra", icon: Hammer },
+  { key: "orcamento", label: "Lancar orcamento", icon: FileText },
   { key: "fotos", label: "Fotos / Anexos", icon: Images },
   { key: "historico", label: "Histórico", icon: History },
   { key: "financeiro", label: "Financeiro", icon: WalletCards },
@@ -413,7 +413,7 @@ function BudgetEditor({
         </div>
         <div className="flex flex-wrap gap-2 md:col-span-3 md:justify-end">
           <button className="btn-secondary" type="button" onClick={saveBudget}>Salvar rascunho</button>
-          <button className="btn-primary" type="button" onClick={() => transitionBudget("finalize")}>Finalizar orcamento</button>
+          <button className="btn-primary" type="button" onClick={() => transitionBudget("finalize")}>Lancar em Orcamentos</button>
           <button className="btn-secondary" type="button" onClick={() => window.print()}>Imprimir</button>
           <button className="btn-secondary" type="button" onClick={() => transitionBudget("approve")}>Registrar aprovacao</button>
           <button className="btn-secondary" type="button" onClick={() => transitionBudget("reject")}>Registrar recusa</button>
@@ -442,7 +442,7 @@ export function WorkOrderDetailPage() {
     }
   }, [detail]);
 
-  async function updateStatus(status: string) {
+  async function updateStatus(status: string, nextTab?: string) {
     if (!detail) return;
     setError(null);
     try {
@@ -456,6 +456,7 @@ export function WorkOrderDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["work-orders"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
       queryClient.invalidateQueries({ queryKey: ["workshop-flow"] });
+      if (nextTab) setActiveTab(nextTab);
     } catch (err) {
       setError(getErrorMessage(err));
     }
@@ -563,6 +564,18 @@ export function WorkOrderDetailPage() {
                   <textarea className="form-field min-h-20" value={reason} onChange={(event) => setReason(event.target.value)} />
                 </label>
                 <div className="mt-4 flex flex-wrap gap-2">
+                  <button className="btn-primary" type="button" onClick={() => setActiveTab("pecas")}>
+                    <PackagePlus size={17} aria-hidden="true" />
+                    Adicionar pecas
+                  </button>
+                  <button className="btn-secondary" type="button" onClick={() => setActiveTab("servicos")}>
+                    <Hammer size={17} aria-hidden="true" />
+                    Adicionar mao de obra
+                  </button>
+                  <button className="btn-secondary" type="button" onClick={() => setActiveTab("orcamento")}>
+                    <FileText size={17} aria-hidden="true" />
+                    Lancar em Orcamentos
+                  </button>
                   {nextStatusOptions.map((status) => (
                     <button className="btn-secondary" key={status} type="button" onClick={() => updateStatus(status)}>
                       {getStatusMeta(status).label}
@@ -587,9 +600,9 @@ export function WorkOrderDetailPage() {
               <div className="rounded-md border border-stone-200 bg-stone-50 p-4">
                 <h3 className="font-semibold text-stone-950">Ações</h3>
                 <div className="mt-3 space-y-2">
-                  <button className="btn-primary w-full" type="button" onClick={() => updateStatus("AGUARDANDO_APROVACAO")}>
+                  <button className="btn-primary w-full" type="button" onClick={() => updateStatus("AGUARDANDO_ORCAMENTO", "pecas")}>
                     <CheckCircle2 size={17} aria-hidden="true" />
-                    Salvar e enviar para aprovação
+                    Salvar diagnostico e montar orcamento
                   </button>
                   <button className="btn-secondary w-full" type="button" onClick={() => updateStatus("EM_DIAGNOSTICO")}>
                     Manter em diagnóstico
@@ -599,26 +612,11 @@ export function WorkOrderDetailPage() {
             </div>
           ) : null}
 
-          {activeTab === "orcamento" ? (
+          {["orcamento", "pecas", "servicos"].includes(activeTab) ? (
             <BudgetEditor detail={detail} setError={setError} />
           ) : null}
 
-          {false ? (
-            <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
-              <div className="rounded-md border border-dashed border-stone-300 bg-stone-50 p-5">
-                <h3 className="font-semibold text-stone-950">Elaboração de orçamento</h3>
-                <p className="mt-1 text-sm text-stone-600">
-                  Estrutura preparada para peças e serviços. A próxima etapa técnica é persistir itens de orçamento e buscar peças do estoque.
-                </p>
-              </div>
-              <div className="rounded-md border border-stone-200 bg-white p-4">
-                <p className="text-sm text-stone-600">Total atual</p>
-                <strong className="mt-2 block text-3xl text-stone-950">R$ 0.00</strong>
-              </div>
-            </div>
-          ) : null}
-
-          {activeTab === "servicos" || activeTab === "pecas" || activeTab === "fotos" || activeTab === "financeiro" ? (
+          {activeTab === "fotos" || activeTab === "financeiro" ? (
             <div className="rounded-md border border-stone-200 bg-stone-50 p-5">
               <h3 className="font-semibold text-stone-950">{tabs.find((tab) => tab.key === activeTab)?.label}</h3>
               <p className="mt-1 text-sm text-stone-600">

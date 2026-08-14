@@ -269,13 +269,17 @@ export function MachineEntryPage() {
       {error ? <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div> : null}
 
       <section className={step === 0 ? "space-y-4" : "hidden"}>
-        <div className="surface p-4">
+        <div className="surface grid gap-3 p-4 md:grid-cols-[1fr_auto]">
           <SearchField
             value={customerSearch}
             onChange={setCustomerSearch}
             placeholder="Buscar por nome, telefone, WhatsApp, CPF ou CNPJ"
             ariaLabel="Buscar cliente para entrada"
           />
+          <button className="btn-primary" type="button" onClick={openCustomerModal}>
+            <Plus size={17} aria-hidden="true" />
+            Novo cliente
+          </button>
         </div>
 
         <div className="grid gap-3 lg:grid-cols-2">
@@ -305,19 +309,9 @@ export function MachineEntryPage() {
             icon={UserRoundPlus}
             title="Nenhum cliente encontrado"
             description="Cadastre o cliente sem sair do fluxo de entrada."
-            action={
-              <button className="btn-primary" type="button" onClick={openCustomerModal}>
-                <Plus size={17} aria-hidden="true" />
-                Novo cliente
-              </button>
-            }
+            action={null}
           />
-        ) : (
-          <button className="btn-secondary" type="button" onClick={openCustomerModal}>
-            <Plus size={17} aria-hidden="true" />
-            Novo cliente
-          </button>
-        )}
+        ) : null}
       </section>
 
       <section className={step === 1 ? "space-y-4" : "hidden"}>

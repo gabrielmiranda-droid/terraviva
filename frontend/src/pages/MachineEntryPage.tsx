@@ -240,6 +240,7 @@ export function MachineEntryPage() {
 
   function resetFlow() {
     setStep(0);
+    setCustomerSearch("");
     setSelectedCustomer(null);
     setSelectedMachine(null);
     setReportedProblem("");

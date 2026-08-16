@@ -26,6 +26,8 @@ class WorkOrderRead(BaseModel):
     services_total: Decimal
     discount: Decimal
     total: Decimal
+    customer_name: str | None = None
+    machine_label: str | None = None
     created_at: datetime
     updated_at: datetime
 

@@ -1,5 +1,5 @@
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.customer import Customer
 from app.models.machine import Machine
@@ -28,7 +28,7 @@ class WorkOrderRepository(BaseRepository[WorkOrder]):
         offset: int = 0,
         limit: int = 100,
     ) -> list[WorkOrder]:
-        stmt = self.db.query(WorkOrder)
+        stmt = self.db.query(WorkOrder).options(joinedload(WorkOrder.customer), joinedload(WorkOrder.machine))
         if status:
             stmt = stmt.filter(WorkOrder.status == status)
         if search:

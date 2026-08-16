@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
@@ -7,15 +7,10 @@ import { PageHeader } from "../components/PageHeader";
 import { SearchField } from "../components/SearchField";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { api } from "../services/api";
-import type { Customer, Machine } from "../types/domain";
+import type { Machine } from "../types/domain";
 
 async function fetchMachines(search: string) {
   const { data } = await api.get<Machine[]>("/machines", { params: { search: search || undefined, limit: 200 } });
-  return data;
-}
-
-async function fetchCustomers() {
-  const { data } = await api.get<Customer[]>("/customers");
   return data;
 }
 
@@ -26,9 +21,6 @@ export function MachinesPage() {
     queryKey: ["machines", debouncedSearch],
     queryFn: () => fetchMachines(debouncedSearch),
   });
-  const { data: customers = [] } = useQuery({ queryKey: ["customers"], queryFn: fetchCustomers });
-  const customerById = useMemo(() => new Map(customers.map((customer) => [customer.id, customer])), [customers]);
-
   return (
     <div className="space-y-5">
       <PageHeader
@@ -66,7 +58,7 @@ export function MachinesPage() {
               {machines.map((machine) => (
                 <tr key={machine.id} className="hover:bg-stone-50">
                   <td className="px-4 py-3 font-medium text-stone-950">{machine.type}</td>
-                  <td className="px-4 py-3 text-stone-700">{customerById.get(machine.customer_id)?.name || "-"}</td>
+                  <td className="px-4 py-3 text-stone-700">{machine.customer_name || "-"}</td>
                   <td className="px-4 py-3 text-stone-700">
                     {[machine.brand, machine.model].filter(Boolean).join(" / ") || "-"}
                   </td>

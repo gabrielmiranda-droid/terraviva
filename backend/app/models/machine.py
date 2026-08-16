@@ -26,3 +26,7 @@ class Machine(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     customer: Mapped["Customer"] = relationship(back_populates="machines")
     entries: Mapped[list["MachineEntry"]] = relationship(back_populates="machine")
     work_orders: Mapped[list["WorkOrder"]] = relationship(back_populates="machine")
+
+    @property
+    def customer_name(self) -> str | None:
+        return self.customer.name if self.customer else None

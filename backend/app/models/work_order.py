@@ -51,6 +51,20 @@ class WorkOrder(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     budgets: Mapped[list["Budget"]] = relationship(back_populates="work_order")
 
+    @property
+    def customer_name(self) -> str | None:
+        return self.customer.name if self.customer else None
+
+    @property
+    def machine_label(self) -> str | None:
+        if not self.machine:
+            return None
+        return " / ".join(
+            value
+            for value in [self.machine.type, self.machine.brand, self.machine.model]
+            if value
+        )
+
 
 class WorkOrderStatusHistory(Base, UUIDPrimaryKeyMixin):
     __tablename__ = "work_order_status_history"

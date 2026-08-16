@@ -1,5 +1,5 @@
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.customer import Customer
 from app.models.machine import Machine
@@ -27,7 +27,7 @@ class MachineRepository(BaseRepository[Machine]):
         offset: int = 0,
         limit: int = 100,
     ) -> list[Machine]:
-        stmt = self.db.query(Machine)
+        stmt = self.db.query(Machine).options(joinedload(Machine.customer))
         if customer_id:
             stmt = stmt.filter(Machine.customer_id == customer_id)
         if query:

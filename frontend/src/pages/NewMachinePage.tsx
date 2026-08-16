@@ -7,6 +7,8 @@ import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { PageHeader } from "../components/PageHeader";
+import { SearchField } from "../components/SearchField";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { api } from "../services/api";
 import type { Customer, Machine } from "../types/domain";
 import { getErrorMessage } from "../utils/errors";
@@ -25,8 +27,13 @@ const schema = z.object({
 
 type MachineForm = z.infer<typeof schema>;
 
-async function fetchCustomers() {
-  const { data } = await api.get<Customer[]>("/customers");
+async function fetchCustomers(search: string) {
+  const { data } = await api.get<Customer[]>("/customers", { params: { search: search || undefined, limit: 200 } });
+  return data;
+}
+
+async function fetchCustomer(customerId: string) {
+  const { data } = await api.get<Customer>(`/customers/${customerId}`);
   return data;
 }
 
@@ -34,14 +41,28 @@ export function NewMachinePage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
-  const { data: customers = [] } = useQuery({ queryKey: ["customers"], queryFn: fetchCustomers });
+  const [customerSearch, setCustomerSearch] = useState("");
+  const debouncedCustomerSearch = useDebouncedValue(customerSearch);
+  const selectedCustomerId = params.get("customer_id") ?? "";
+  const { data: customers = [] } = useQuery({
+    queryKey: ["customers", debouncedCustomerSearch],
+    queryFn: () => fetchCustomers(debouncedCustomerSearch),
+  });
+  const { data: selectedCustomer } = useQuery({
+    queryKey: ["customer", selectedCustomerId],
+    queryFn: () => fetchCustomer(selectedCustomerId),
+    enabled: Boolean(selectedCustomerId),
+  });
+  const customerOptions = selectedCustomer && !customers.some((customer) => customer.id === selectedCustomer.id)
+    ? [selectedCustomer, ...customers]
+    : customers;
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<MachineForm>({
     resolver: zodResolver(schema),
-    defaultValues: { customer_id: params.get("customer_id") ?? "" },
+    defaultValues: { customer_id: selectedCustomerId },
   });
 
   async function onSubmit(values: MachineForm) {
@@ -65,9 +86,16 @@ export function NewMachinePage() {
         <section className="grid gap-4 rounded-md border border-stone-200 bg-white p-4 shadow-sm md:grid-cols-2">
           <label className="block space-y-1 md:col-span-2">
             <span className="label">Cliente</span>
+            <SearchField
+              value={customerSearch}
+              onChange={setCustomerSearch}
+              placeholder="Buscar cliente por nome, documento ou telefone"
+              ariaLabel="Buscar cliente da maquina"
+              className="mb-2"
+            />
             <select className="form-field" {...register("customer_id")}>
               <option value="">Selecione</option>
-              {customers.map((customer) => (
+              {customerOptions.map((customer) => (
                 <option key={customer.id} value={customer.id}>
                   {customer.name}
                 </option>

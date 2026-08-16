@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
@@ -7,7 +7,7 @@ import { SearchField } from "../components/SearchField";
 import { StatusBadge } from "../components/StatusBadge";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { api } from "../services/api";
-import type { Customer, Machine, WorkOrder } from "../types/domain";
+import type { WorkOrder } from "../types/domain";
 import { getStatusMeta } from "../utils/status";
 
 const statusOptions = [
@@ -33,16 +33,6 @@ async function fetchWorkOrders(status: string, search: string) {
   return data;
 }
 
-async function fetchCustomers() {
-  const { data } = await api.get<Customer[]>("/customers");
-  return data;
-}
-
-async function fetchMachines() {
-  const { data } = await api.get<Machine[]>("/machines");
-  return data;
-}
-
 export function WorkOrdersPage() {
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
@@ -51,11 +41,6 @@ export function WorkOrdersPage() {
     queryKey: ["work-orders", status, debouncedSearch],
     queryFn: () => fetchWorkOrders(status, debouncedSearch),
   });
-  const { data: customers = [] } = useQuery({ queryKey: ["customers"], queryFn: fetchCustomers });
-  const { data: machines = [] } = useQuery({ queryKey: ["machines"], queryFn: fetchMachines });
-  const customerById = useMemo(() => new Map(customers.map((customer) => [customer.id, customer])), [customers]);
-  const machineById = useMemo(() => new Map(machines.map((machine) => [machine.id, machine])), [machines]);
-
   return (
     <div className="space-y-5">
       <PageHeader title="Ordens de Servico" />
@@ -93,28 +78,22 @@ export function WorkOrdersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
-              {workOrders.map((workOrder) => {
-                const customer = customerById.get(workOrder.customer_id);
-                const machine = machineById.get(workOrder.machine_id);
-                return (
+              {workOrders.map((workOrder) => (
                   <tr key={workOrder.id} className="hover:bg-stone-50">
                     <td className="px-4 py-3 font-semibold text-stone-950">
                       <Link className="hover:text-field-800" to={`/ordens-servico/${workOrder.id}`}>
                         {workOrder.number}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-stone-700">{customer?.name || "-"}</td>
-                    <td className="px-4 py-3 text-stone-700">
-                      {machine ? [machine.type, machine.brand, machine.model].filter(Boolean).join(" / ") : "-"}
-                    </td>
+                    <td className="px-4 py-3 text-stone-700">{workOrder.customer_name || "-"}</td>
+                    <td className="px-4 py-3 text-stone-700">{workOrder.machine_label || "-"}</td>
                     <td className="px-4 py-3">
                       <StatusBadge status={workOrder.status} />
                     </td>
                     <td className="max-w-md px-4 py-3 text-stone-700">{workOrder.reported_problem}</td>
                     <td className="px-4 py-3 text-stone-700">R$ {Number(workOrder.total).toFixed(2)}</td>
                   </tr>
-                );
-              })}
+                ))}
               {!isLoading && workOrders.length === 0 ? (
                 <tr>
                   <td className="px-4 py-6 text-center text-stone-500" colSpan={6}>

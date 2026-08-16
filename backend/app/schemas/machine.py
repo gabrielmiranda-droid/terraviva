@@ -38,5 +38,6 @@ class MachineRead(MachineBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    customer_name: str | None = None
     created_at: datetime
     updated_at: datetime

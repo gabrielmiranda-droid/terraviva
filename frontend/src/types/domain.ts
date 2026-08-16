@@ -43,6 +43,7 @@ export type Customer = {
 export type Machine = {
   id: string;
   customer_id: string;
+  customer_name?: string | null;
   type: string;
   brand?: string | null;
   model?: string | null;
@@ -117,6 +118,8 @@ export type WorkOrder = {
   services_total: string;
   discount: string;
   total: string;
+  customer_name?: string | null;
+  machine_label?: string | null;
   created_at: string;
   updated_at: string;
 };
